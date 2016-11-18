@@ -133,12 +133,19 @@ function initMap() {
 	var locations = [
 	{title: 'Park Ave Penthouse', location: {lat: 40.7, lng: -73.4 }},
 	{title: 'Park Ave Penthouse', location: {lat: 40.8, lng: -73.5 }},
-	{title: 'Park Ave Penthouse', location: {lat: 40.9, lng: -73.6 }},
+	{title: 'Park Ave Penthouse', location: {lat: 40.784636, lng: -73.63301 }},
 	{title: 'Park Ave Penthouse', location: {lat: 41.0, lng: -73.7 }},
 	{title: 'Park Ave Penthouse', location: {lat: 41.1, lng: -73.8 }},
 	];
 
 	var largeInfowindow = new google.maps.InfoWindow();
+
+	var defaultIcon = makeMarkerIcon('0091ff');
+
+	var highlightedIcon = makeMarkerIcon('FFFF24');
+
+
+
 	var bounds = new google.maps.LatLngBounds();
 
 	for(var i = 0; i < locations.length; i++) {
@@ -147,6 +154,7 @@ function initMap() {
 		var marker = new google.maps.Marker({
 			position: position,
 			title: title,
+			// icon: defaultIcon,
 			animation: google.maps.Animation.DROP,
 			id: i
 		});
@@ -154,8 +162,16 @@ function initMap() {
 
 		bounds.extend(marker.position);
 
-		marker.addListener('click', function(){
+		marker.addListener('click', function() {
 			populateInfoWindow(this, largeInfowindow);
+		});
+
+		marker.addListener('mouseover', function() {
+			this.setIcon(highlightedIcon);
+		});
+
+		marker.addListener('mouseout', function() {
+			this.setIcon(defaultIcon);
 		});
 	}
 
@@ -169,8 +185,36 @@ function initMap() {
 			infowindow.setContent('<div>'+ marker.title + '</div>');
 			infowindow.open(map, marker);
 			infowindow.addListener('closeclick', function(){
-				infowindow.setMarker(null);
+				infowindow.marker = null;
 			});
+			var streetViewService = new google.maps.StreetViewService();
+			var radius = 50;
+
+			function getStreetView(data, status) {
+				if (status == google.maps.StreetViewStatus.OK) {
+					var nearStreetViewLocation = data.location.latLng;
+					var heading = google.maps.geometry.spherical.computeHeading(
+						nearStreetViewLocation, marker.position);
+						infowindow.setContent('<div>' + marker.title + '</div><div id="pano"></div>');
+						var panoramaOptions = {
+							position: nearStreetViewLocation,
+							pov: {
+								heading: heading,
+								pitch: 30
+							}
+						};
+					var panorama = new google.maps.StreetViewPanorama(
+						document.getElementById('pano'), panoramaOptions);
+
+				} else {
+					infowindow.setContent('<div>' + marker.title + '</div>' +
+						'<div>No Street View Found</div>');
+				}
+			}
+
+			streetViewService.getPanoramaByLocation(marker.position, radius, getStreetView);
+
+			infowindow.open(map, marker);
 		}
 	}
 
@@ -188,6 +232,18 @@ function initMap() {
 			markers[i].setMap(null);
 		}
 	}
+
+
+	function makeMarkerIcon(markerColor) {
+        var markerImage = new google.maps.MarkerImage(
+          'http://chart.googleapis.com/chart?chst=d_map_spin&chld=1.15|0|'+ markerColor +
+          '|40|_|%E2%80%A2',
+          new google.maps.Size(21, 34),
+          new google.maps.Point(0, 0),
+          new google.maps.Point(10, 34),
+          new google.maps.Size(21,34));
+        return markerImage;
+      }
 }
 
 
